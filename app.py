@@ -43,15 +43,16 @@ def analyze():
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                 zip_ref.extractall(tmpdirname)
 
+            # Obtener el directorio extraído
             extracted_dir = os.path.join(tmpdirname, os.listdir(tmpdirname)[0])
-            
+
             # Extensiones compatibles, puedes añadir más si lo consideras necesario
-            extensions = ['.cs', '.java', '.js', '.ts', '.kts', '.py', '.rb', '.cpp', '.c', '.php']
+            extensions = ['.cs', '.java', '.js', '.ts', '.kts', '.py', '.rb', '.cpp', '.c', '.php', '.go', '.rs']
             results = []
 
             # Analizar todos los archivos dentro del directorio extraído
-            found_files = False  # Flag para saber si encontró archivos con extensiones compatibles
-            for root, _, files in os.walk(extracted_dir):
+            found_files = False  # Flag para saber si se encontraron archivos con extensiones compatibles
+            for root, _, files in os.walk(extracted_dir):  # Ahora recorremos todo el directorio recursivamente
                 for file in files:
                     if any(file.endswith(ext) for ext in extensions):
                         found_files = True  # Se encontraron archivos compatibles
