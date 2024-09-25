@@ -2,7 +2,7 @@ import tempfile
 import requests
 import zipfile
 import os
-import lizard  # Usamos el módulo lizard directamente
+import lizard
 from flask import Flask, request, jsonify
 
 app = Flask(__name__)
@@ -16,17 +16,24 @@ def analyze():
         return jsonify({"error": "No se proporcionó el enlace del repositorio"}), 400
     
     try:
-        # Convertir la URL del repositorio en una URL de descarga de ZIP
+        # Detectar la URL correcta del repositorio
         if repo_url.endswith('.git'):
             repo_url = repo_url[:-4]  # Eliminar la extensión .git
-        
-        download_url = f"{repo_url}/archive/refs/heads/main.zip"
 
-        # Descargar el archivo ZIP
-        response = requests.get(download_url)
-        if response.status_code != 200:
-            return jsonify({"error": "Error al descargar el repositorio"}), 500
+        # Probar con la rama 'main' y 'master' si la 'main' no existe
+        download_urls = [
+            f"{repo_url}/archive/refs/heads/main.zip",
+            f"{repo_url}/archive/refs/heads/master.zip"
+        ]
         
+        response = None
+        for url in download_urls:
+            response = requests.get(url)
+            if response.status_code == 200:
+                break
+        else:
+            return jsonify({"error": "Error al descargar el repositorio"}), 500
+
         # Crear un directorio temporal y extraer el archivo ZIP
         with tempfile.TemporaryDirectory() as tmpdirname:
             zip_path = os.path.join(tmpdirname, 'repo.zip')
@@ -36,29 +43,34 @@ def analyze():
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                 zip_ref.extractall(tmpdirname)
 
-            # Ejecutar lizard en el directorio extraído
             extracted_dir = os.path.join(tmpdirname, os.listdir(tmpdirname)[0])
             
-            # Analizar todos los archivos dentro del directorio extraído
-            results = []
+            # Extensiones compatibles, puedes añadir más si lo consideras necesario
             extensions = ['.cs', '.java', '.js', '.ts', '.kts', '.py', '.rb', '.cpp', '.c', '.php']
+            results = []
+
+            # Analizar todos los archivos dentro del directorio extraído
+            found_files = False  # Flag para saber si encontró archivos con extensiones compatibles
             for root, _, files in os.walk(extracted_dir):
                 for file in files:
-                    for ext in extensions:
-                        if file.endswith(ext): 
-                            file_path = os.path.join(root, file)
-                            analysis = lizard.analyze_file(file_path)  # Analizar archivo con lizard
-                            
-                            # Extraer métricas importantes
-                            for func in analysis.function_list:
-                                results.append({
-                                    "file": file_path,
-                                    "function_name": func.name,
-                                    "nloc": func.nloc,  # Número de líneas de código
-                                    "cyclomatic_complexity": func.cyclomatic_complexity,
-                                    "token_count": func.token_count,
-                                })
+                    if any(file.endswith(ext) for ext in extensions):
+                        found_files = True  # Se encontraron archivos compatibles
+                        file_path = os.path.join(root, file)
+                        analysis = lizard.analyze_file(file_path)
+                        
+                        for func in analysis.function_list:
+                            results.append({
+                                "file": file_path,
+                                "function_name": func.name,
+                                "nloc": func.nloc,
+                                "cyclomatic_complexity": func.cyclomatic_complexity,
+                                "token_count": func.token_count,
+                            })
 
+            # Comprobar si se encontraron archivos compatibles para analizar
+            if not found_files:
+                return jsonify({"error": "No se encontraron archivos de código fuente compatibles para analizar"}), 400
+            
             # Devolver el resultado del análisis
             return jsonify({"metrics": results})
 
