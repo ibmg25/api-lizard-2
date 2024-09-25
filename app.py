@@ -4,8 +4,12 @@ import zipfile
 import os
 import lizard
 from flask import Flask, request, jsonify
+import logging
 
 app = Flask(__name__)
+
+# Configurar logging
+logging.basicConfig(level=logging.DEBUG)
 
 @app.route('/analyze', methods=['POST'])
 def analyze():
@@ -28,8 +32,10 @@ def analyze():
         
         response = None
         for url in download_urls:
+            logging.debug(f"Intentando descargar el repositorio desde: {url}")
             response = requests.get(url)
             if response.status_code == 200:
+                logging.debug(f"Descarga exitosa desde: {url}")
                 break
         else:
             return jsonify({"error": "Error al descargar el repositorio"}), 500
@@ -45,6 +51,7 @@ def analyze():
 
             # Obtener el directorio extraído
             extracted_dir = os.path.join(tmpdirname, os.listdir(tmpdirname)[0])
+            logging.debug(f"Directorio extraído: {extracted_dir}")
 
             # Extensiones compatibles, puedes añadir más si lo consideras necesario
             extensions = ['.cs', '.java', '.js', '.ts', '.kts', '.py', '.rb', '.cpp', '.c', '.php', '.go', '.rs']
@@ -53,10 +60,13 @@ def analyze():
             # Analizar todos los archivos dentro del directorio extraído
             found_files = False  # Flag para saber si se encontraron archivos con extensiones compatibles
             for root, _, files in os.walk(extracted_dir):  # Ahora recorremos todo el directorio recursivamente
+                logging.debug(f"Revisando directorio: {root}")
                 for file in files:
+                    logging.debug(f"Archivo encontrado: {file}")
                     if any(file.endswith(ext) for ext in extensions):
                         found_files = True  # Se encontraron archivos compatibles
                         file_path = os.path.join(root, file)
+                        logging.debug(f"Analizando archivo: {file_path}")
                         analysis = lizard.analyze_file(file_path)
                         
                         for func in analysis.function_list:
@@ -70,12 +80,14 @@ def analyze():
 
             # Comprobar si se encontraron archivos compatibles para analizar
             if not found_files:
+                logging.debug("No se encontraron archivos con extensiones compatibles.")
                 return jsonify({"error": "No se encontraron archivos de código fuente compatibles para analizar"}), 400
             
             # Devolver el resultado del análisis
             return jsonify({"metrics": results})
 
     except Exception as e:
+        logging.error(f"Error al procesar el repositorio: {str(e)}")
         return jsonify({"error": "Error al procesar el repositorio", "details": str(e)}), 500
 
 if __name__ == '__main__':
