@@ -81,7 +81,7 @@ def analyze():
             # Comprobar si se encontraron archivos compatibles para analizar
             if not found_files:
                 logging.debug("No se encontraron archivos con extensiones compatibles.")
-                return jsonify({"error": "No se encontraron archivos de código fuente compatibles para analizar"}), 400
+                return jsonify({"error": "No se encontraron archivos compatibles"}), 400
             
             # Devolver el resultado del análisis
             return jsonify({"metrics": results})
