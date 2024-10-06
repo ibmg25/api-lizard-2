@@ -141,7 +141,8 @@ def analyze():
         return jsonify({"error": "Error al procesar el repositorio", "details": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000)) 
+    app.run(host='0.0.0.0', port=port, debug=True)
 
 
 # curl -X POST http://127.0.0.1:5000/analyze -H "Content-Type: application/json" -d "{\"repoUrl\": \"https://github.com/ValeryArauco/prueba.git\"}"
