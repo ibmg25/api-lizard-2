@@ -50,6 +50,9 @@ def analyze():
     data = request.get_json()
     repo_url = data.get('repoUrl')
 
+    if repo_url.endswith('.git'):
+        repo_url = repo_url[:-4]
+
     if not repo_url:
         logging.debug("No se proporcionó el enlace del repositorio.")
         return jsonify({"error": "No se proporcionó el enlace del repositorio"}), 400
